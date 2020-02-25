@@ -1,0 +1,5 @@
+
+# wait for rtl_tcp
+bashio::net.wait_for 1234
+
+bashio::log.info "Starting rtlamr...."

@@ -1,0 +1,41 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Home Assistant Community Add-on: rtlamr2mqtt
+# Runs rtl_tcp
+# ==============================================================================
+
+declare -a options
+declare serial_number
+declare rtl_device
+
+bashio::log.info "Starting rtl_tcp..."
+
+options+=("-a 127.0.0.1")
+
+if bashio::config.has_value 'serial_number'; then
+    serial_number=$(bashio::config 'serial_number')
+
+    bashio::log.info "[-] Finding RTL-SDR device with serial number ${serial_number}..."
+
+    rtl_num_devices=$(/usr/local/bin/rtl_eeprom 2>&1 >/dev/null | grep "Found [0-9][0-9]*" | sed -E 's/.*([0-9]+).*/\1/')
+    if [ $rtl_num_devices ]
+    then
+      for i in $(seq 1 $rtl_num_devices);
+      do
+        rtl_device=$((i-1))
+        rtl_serial=$(/usr/local/bin/rtl_eeprom -d$rtl_device 2>&1 >/dev/null | grep "Serial number\:" | sed -E 's/Serial number:[[:blank:]]+//')
+        if [ "$1" == "$rtl_serial" ]
+        then
+          bashio::log.info "[-] Found RTL-SDR device number ${rtl_device} with serial number ${serial_number}"
+          options+=("-d ${rtl_device}")
+        else
+          bashio::log.warn "[!] Failed to find RTL-SDR device with serial number ${serial_number}"
+        fi
+      done
+    else
+      bashio::log.error "[!] Failed to find any RTL-SDR devices!"
+    fi
+fi
+
+exec /usr/local/bin/rtl_tcp "${options[@]}"
+
